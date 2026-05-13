@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-from openai import OpenAI
-import openai
+from clients.llm_client import LlmClient
+from schemas.risk_schema import RiskProfileInput
+from services.risk_service import generate_risk_report, generate_risk_report_stream
 
 st.markdown(
     """
@@ -125,6 +126,10 @@ def get_openai_response(user_profile):
         stream=True
     )
     return response
+
+
+def get_openai_response(user_profile):
+    return generate_risk_report_stream(user_profile)
 
 def risk_assessment_page():
     # ========== 页面配置 ==========

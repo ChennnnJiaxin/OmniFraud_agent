@@ -10,8 +10,14 @@ import base64
 
 from collections import Counter
 import json
-from openai import OpenAI
-import openai
+from clients.llm_client import LlmClient
+from services.ocr_service import extract_text_from_image as extract_text_from_image_service
+from services.sms_service import (
+    generate_sms_suggestions_stream as generate_sms_suggestions_stream_service,
+    load_keywords as load_keywords_service,
+    load_msg_cls_model,
+    recognize_sms,
+)
 
 with st.sidebar:
 
@@ -50,18 +56,7 @@ with st.sidebar:
         if st.button('检查 API Key 可用性'):
             with st.spinner('正在验证...'):
                 try:
-                    # DashScope OpenAI-compatible endpoint may not support model retrieve.
-                    # Use a tiny completion request as connectivity/auth/model validity probe.
-                    client = OpenAI(
-                        api_key=st.session_state.openai_api_key,
-                        base_url=st.session_state.openai_base_url,
-                    )
-                    client.chat.completions.create(
-                        model=st.session_state.openai_model,
-                        messages=[{"role": "user", "content": "ping"}],
-                        max_tokens=1,
-                        temperature=0,
-                    )
+                    LlmClient().verify_chat_model()
                     st.success('API Key 验证成功', icon='✅')
                 except Exception as e:
                     st.error(e, icon='❌')
@@ -213,6 +208,20 @@ def predict_text(text):
     except Exception as e:
         st.error(f"分析失败: {str(e)}")
         return None
+
+
+def extract_text_from_image(uploaded_image):
+    response = extract_text_from_image_service(uploaded_image)
+    if not response.success:
+        raise ValueError(response.error.message if response.error else "图片文字提取失败")
+    return response.text
+
+
+def predict_text(text):
+    response = recognize_sms(text)
+    if not response.success:
+        raise ValueError(response.error.message if response.error else "分析失败")
+    return response.raw_result
 
 
 # ---------------------------
@@ -621,3 +630,21 @@ footer = """
 </div>
 """
 st.markdown(footer, unsafe_allow_html=True)
+
+
+def extract_text_from_image(uploaded_image):
+    response = extract_text_from_image_service(uploaded_image)
+    if not response.success:
+        raise ValueError(response.error.message if response.error else "图片文字提取失败")
+    return response.text
+
+
+def predict_text(text):
+    response = recognize_sms(text)
+    if not response.success:
+        raise ValueError(response.error.message if response.error else "分析失败")
+    return response.raw_result
+
+
+def get_suggestions_stream(msg, prediction):
+    return generate_sms_suggestions_stream_service(msg, prediction)

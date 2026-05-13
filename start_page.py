@@ -14,6 +14,6 @@ with st.sidebar:
         )
 
 st.title(":rainbow[OmniFraud]")
-st.markdown("### :rainbow[*融合 Qwen-VL 多模态识别与知识图谱研判的反诈预警平台*]")
+st.markdown("### :rainbow[*融合 Qwen-VL 多模态识别与知识图谱研判的反诈赋能 Agent*]")
 video_path = "assets/logo.mp4"
 st.video(video_path, autoplay=True, muted=True, loop=True)

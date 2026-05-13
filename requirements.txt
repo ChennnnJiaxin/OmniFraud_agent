@@ -1,4 +1,6 @@
 tenacity!=8.4.0
+fastapi==0.115.6
+uvicorn==0.32.1
 langchain==0.3.9
 openai==1.56.0
 langchain-openai==0.2.10

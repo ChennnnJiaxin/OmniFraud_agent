@@ -1,4 +1,12 @@
 # OmniFraud
+启动项目终端指令：
+终端一：启动 Neo4j
+cd E:\haixia\OmniFraud\OmniFraud
+.\run_neo4j_console.ps1
+终端二：启动 Streamlit 前端
+cd E:\haixia\OmniFraud\OmniFraud
+.\.venv\Scripts\Activate.ps1
+streamlit run app.py
 
 ## 介绍
 
@@ -36,3 +44,25 @@ OmniFraud 平台聚焦“防诈于未然，解诈于未解”的设计理念，�
 5. `recognize/`, `search/`, `show/`, `bot/`：五大模块的依赖文件
 6. `recognize_page.py`, `risk_page.py`, `show_page.py`, `bot_page.py`, `search_page.py`：五大模块的页面文件
    ============================
+
+## FastAPI API
+
+在不影响原有 Streamlit 入口的前提下，项目新增了 FastAPI 后端接口，可用于服务化调用与前后端分离集成。
+
+- Streamlit 启动：`streamlit run app.py`
+- FastAPI 启动：`python -m uvicorn api.main:app --reload`
+
+当前已提供的核心 API：
+
+- `GET /health`
+- `POST /sms/recognize`
+- `POST /qa/chat`
+- `POST /cases/search`
+- `POST /risk-assessment/report`
+- `POST /agent/run`
+
+运行测试：
+
+```bash
+python -m unittest discover -s tests -v
+```

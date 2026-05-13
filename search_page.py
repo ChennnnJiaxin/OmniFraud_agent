@@ -6,6 +6,8 @@ from pyvis.network import Network
 import plotly.express as px
 import time
 from search import kg
+from services.case_service import get_case_names as get_case_names_service
+from services.case_service import search_cases as search_cases_service
 
 
 
@@ -162,6 +164,33 @@ def get_cases_names(limit=5):
         # 查询案件详情
         result = session.run(query_template, limit=limit)
         return result.value()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def search_cases(keyword, skip=0, limit=30):
+    response = search_cases_service(keyword, limit=limit, skip=skip)
+    if not response.success:
+        raise ValueError(response.error.message if response.error else "案件检索失败")
+    rows = [
+        {
+            "name": case.title,
+            "description": case.summary,
+            "type": case.case_type,
+            "types": case.fraud_types,
+            "subtypes": case.fraud_subtypes,
+            "suspects": case.suspects,
+            "victims": case.victims,
+            "money": case.money or 0,
+            "locations": case.locations,
+            "laws": case.laws,
+        }
+        for case in response.cases
+    ]
+    return response.total_count, pd.DataFrame(rows)
+
+
+def get_cases_names(limit=5):
+    return get_case_names_service(limit=limit)
 
 # ============================
 # 界面布局配置

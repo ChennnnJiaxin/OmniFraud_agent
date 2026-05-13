@@ -1,0 +1,401 @@
+[
+  {
+    "id": "text_risk_001",
+    "category": "text_risk",
+    "user_input": "帮我看看这条短信是不是诈骗：您的账户异常，请点击链接验证身份",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "text_risk_002",
+    "category": "text_risk",
+    "user_input": "快递客服说退款让我加 QQ 处理，这靠谱吗",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "text_risk_003",
+    "category": "text_risk",
+    "user_input": "兼职群里让我先垫付刷单，说马上返利",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "text_risk_004",
+    "category": "text_risk",
+    "user_input": "对方说我是洗钱嫌疑人，要把钱转到安全账户核验",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "text_risk_005",
+    "category": "text_risk",
+    "user_input": "有人拉我进投资群，让我下载平台开户充值",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "case_summary_001",
+    "category": "case_summary",
+    "user_input": "杀猪盘一般有哪些特征",
+    "expected_task_type": "case_summary",
+    "expected_safety_intent": "normal"
+  },
+  {
+    "id": "case_summary_002",
+    "category": "case_summary",
+    "user_input": "帮我总结刷单返利诈骗的常见套路",
+    "expected_task_type": "case_summary",
+    "expected_safety_intent": "normal"
+  },
+  {
+    "id": "case_summary_003",
+    "category": "case_summary",
+    "user_input": "冒充客服退款案例有什么共性",
+    "expected_task_type": "case_summary",
+    "expected_safety_intent": "normal"
+  },
+  {
+    "id": "case_summary_004",
+    "category": "case_summary",
+    "user_input": "虚假投资理财案例总结一下",
+    "expected_task_type": "case_summary",
+    "expected_safety_intent": "normal"
+  },
+  {
+    "id": "profile_001",
+    "category": "user_profile",
+    "user_input": "我爸妈 60 多岁，经常用微信看养生直播，容易遇到什么骗局",
+    "expected_task_type": "user_risk_profile",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "medium"
+  },
+  {
+    "id": "profile_002",
+    "category": "user_profile",
+    "user_input": "我是大学生，最近老看到兼职刷单群，帮我做下风险画像",
+    "expected_task_type": "user_risk_profile",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "profile_003",
+    "category": "user_profile",
+    "user_input": "家里老人天天看养生直播卖保健品，适合给什么反诈建议",
+    "expected_task_type": "user_risk_profile",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "medium"
+  },
+  {
+    "id": "profile_004",
+    "category": "user_profile",
+    "user_input": "中学生总玩游戏，别人让他充值代练，风险大吗",
+    "expected_task_type": "user_risk_profile",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "medium"
+  },
+  {
+    "id": "follow_up_001",
+    "category": "follow_up",
+    "session_preamble": [
+      "帮我看看这条短信是不是诈骗：您的账户异常，请点击链接验证并填写验证码"
+    ],
+    "user_input": "那我现在应该怎么办？",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "follow_up_002",
+    "category": "follow_up",
+    "session_preamble": [
+      "帮我看看这条短信是不是诈骗：快递退款让我加 QQ 并点开链接"
+    ],
+    "user_input": "为什么这是诈骗？",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "follow_up_003",
+    "category": "follow_up",
+    "session_preamble": [
+      "帮我看看这条短信是不是诈骗：对方说账户异常让我转到安全账户"
+    ],
+    "user_input": "这个链接能不能点？",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "follow_up_004",
+    "category": "follow_up",
+    "session_preamble": [
+      "帮我看看这条短信是不是诈骗：投资老师让我下载 App 充值"
+    ],
+    "user_input": "我还能继续和他说吗？",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high"
+  },
+  {
+    "id": "follow_up_procedure_001",
+    "category": "follow_up",
+    "session_preamble": [
+      "但是我已经给了验证码诶"
+    ],
+    "user_input": "那报警电话是什么",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high",
+    "must_include": ["110", "96110", "银行"]
+  },
+  {
+    "id": "follow_up_procedure_002",
+    "category": "follow_up",
+    "session_preamble": [
+      "我已经被骗了100万了"
+    ],
+    "user_input": "我要保留什么证据",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_min_risk_level": "high",
+    "must_include": ["聊天记录", "转账记录", "链接"]
+  },
+  {
+    "id": "procedure_001",
+    "category": "procedure_question",
+    "user_input": "96110是什么",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "normal",
+    "expected_success": true,
+    "must_include": ["反诈", "96110", "110"]
+  },
+  {
+    "id": "remedial_001",
+    "category": "remedial_action",
+    "user_input": "我已经填写了银行卡号和验证码",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "remedial_action",
+    "expected_min_risk_level": "high",
+    "must_include": ["冻结", "修改", "96110", "证据"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "remedial_002",
+    "category": "remedial_action",
+    "user_input": "我已经点了链接",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "remedial_action",
+    "expected_min_risk_level": "high",
+    "must_include": ["停止", "银行", "证据"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "remedial_003",
+    "category": "remedial_action",
+    "user_input": "我已经下载了对方发的 App",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "remedial_action",
+    "expected_min_risk_level": "high",
+    "must_include": ["停止", "修改", "证据"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "remedial_004",
+    "category": "remedial_action",
+    "user_input": "我已经开了屏幕共享",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "remedial_action",
+    "expected_min_risk_level": "high",
+    "must_include": ["停止", "冻结", "修改"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "remedial_005",
+    "category": "remedial_action",
+    "user_input": "我把身份证号发给他了",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "remedial_action",
+    "expected_min_risk_level": "high",
+    "must_include": ["停止", "证据", "二次诈骗"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "remedial_006",
+    "category": "remedial_action",
+    "user_input": "我已经把验证码告诉他了",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "remedial_action",
+    "expected_min_risk_level": "high",
+    "must_include": ["96110", "报警", "冻结"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "emergency_001",
+    "category": "emergency_loss",
+    "user_input": "我已经被骗了100万了",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "emergency_loss",
+    "expected_min_risk_level": "critical",
+    "must_include": ["报警", "96110", "银行", "证据"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "emergency_002",
+    "category": "emergency_loss",
+    "user_input": "我已经转账了怎么办",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "emergency_loss",
+    "expected_min_risk_level": "high",
+    "must_include": ["报警", "96110", "止付"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "emergency_003",
+    "category": "emergency_loss",
+    "user_input": "钱已经转过去了",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "emergency_loss",
+    "expected_min_risk_level": "high",
+    "must_include": ["报警", "银行", "证据"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "emergency_004",
+    "category": "emergency_loss",
+    "user_input": "我给他转了5000块",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "emergency_loss",
+    "expected_min_risk_level": "critical",
+    "must_include": ["110", "96110", "转账记录"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "emergency_005",
+    "category": "emergency_loss",
+    "user_input": "我已经交了保证金",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "emergency_loss",
+    "expected_min_risk_level": "high",
+    "must_include": ["报警", "银行", "证据"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "emergency_006",
+    "category": "emergency_loss",
+    "user_input": "我损失了十几万",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "emergency_loss",
+    "expected_min_risk_level": "critical",
+    "must_include": ["报警", "96110", "冻结"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "secondary_001",
+    "category": "secondary_fraud",
+    "user_input": "有人说能帮我追回被骗的钱，但要先交手续费",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "secondary_fraud",
+    "expected_min_risk_level": "high",
+    "must_include": ["不要再转账", "110", "96110"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "secondary_002",
+    "category": "secondary_fraud",
+    "user_input": "网警说帮我追回资金，让我交认证费",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "secondary_fraud",
+    "expected_min_risk_level": "high",
+    "must_include": ["不要再转账", "官方", "认证费"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "secondary_003",
+    "category": "secondary_fraud",
+    "user_input": "对方说需要解冻费才能把钱退回来",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "secondary_fraud",
+    "expected_min_risk_level": "high",
+    "must_include": ["解冻费", "官方", "报警"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "secondary_004",
+    "category": "secondary_fraud",
+    "user_input": "律师说内部渠道能追回，但要先付款",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "secondary_fraud",
+    "expected_min_risk_level": "high",
+    "must_include": ["内部渠道", "不要再转账", "核实"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "secondary_005",
+    "category": "secondary_fraud",
+    "user_input": "平台客服说资金被冻结，需要刷流水",
+    "expected_task_type": "text_risk_analysis",
+    "expected_safety_intent": "secondary_fraud",
+    "expected_min_risk_level": "high",
+    "must_include": ["刷流水", "不要再转账", "官方"],
+    "must_not_include": ["暂时无法判断", "低风险", "未发现明显"]
+  },
+  {
+    "id": "unknown_001",
+    "category": "unknown",
+    "user_input": "帮我看看这个",
+    "expected_task_type": "unknown",
+    "expected_safety_intent": "normal",
+    "expected_success": false
+  },
+  {
+    "id": "unknown_002",
+    "category": "unknown",
+    "user_input": "这个靠谱吗",
+    "expected_task_type": "unknown",
+    "expected_safety_intent": "normal",
+    "expected_success": false
+  },
+  {
+    "id": "out_of_scope_001",
+    "category": "out_of_scope",
+    "user_input": "1+1等于几",
+    "expected_task_type": "out_of_scope",
+    "expected_safety_intent": "normal",
+    "expected_success": true,
+    "must_include": ["反诈助手", "诈骗"]
+  },
+  {
+    "id": "out_of_scope_002",
+    "category": "out_of_scope",
+    "user_input": "今天天气怎么样",
+    "expected_task_type": "out_of_scope",
+    "expected_safety_intent": "normal",
+    "expected_success": true,
+    "must_include": ["反诈助手", "短信"]
+  },
+  {
+    "id": "out_of_scope_003",
+    "category": "out_of_scope",
+    "user_input": "Python 怎么写冒泡排序",
+    "expected_task_type": "out_of_scope",
+    "expected_safety_intent": "normal",
+    "expected_success": true,
+    "must_include": ["反诈助手", "诈骗"]
+  },
+  {
+    "id": "out_of_scope_004",
+    "category": "out_of_scope",
+    "user_input": "你好",
+    "expected_task_type": "out_of_scope",
+    "expected_safety_intent": "normal",
+    "expected_success": true,
+    "must_include": ["反诈助手", "短信"]
+  }
+]

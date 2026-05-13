@@ -4,6 +4,14 @@ __pycache__
 .streamlit/secrets.toml
 .env
 .venv
+.venv*/
+.codex/
+.backup/
+.pip-cache/
+.runtime-logs/
+.tmp/
+.tmp*
+data/agent_sessions/
 .DS_Store
 .vscode
 .conda
