@@ -59,6 +59,17 @@ def _image_data_uri(path: Path) -> str:
     return f"data:image/{suffix};base64,{encoded}"
 
 
+def _uploaded_image_to_data_uri(image) -> str:
+    if image is None or not hasattr(image, "getvalue"):
+        return ""
+    mime_type = getattr(image, "type", None) or "image/png"
+    image_bytes = image.getvalue()
+    if not image_bytes:
+        return ""
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
+
+
 def _parse_timestamp(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -877,9 +888,15 @@ def _render_session_summary(session: AgentSession | None) -> None:
     pass  # removed for cleaner UI
 
 
-def _render_message_bubble(role: str, content: str, created_at: str) -> None:
+def _render_message_bubble(role: str, content: str, created_at: str, metadata: dict | None = None) -> None:
+    del created_at
     avatar = "🙂" if role == "user" else "🛡️"
     with st.chat_message(role, avatar=avatar):
+        image_data_uri = (metadata or {}).get("image_data_uri")
+        if image_data_uri:
+            caption = (metadata or {}).get("image_name") or "上传图片"
+            image_width = 300 if role == "user" else 280
+            st.image(image_data_uri, caption=caption, width=image_width)
         st.write(content)
 
 
@@ -938,6 +955,42 @@ def _render_response_analysis(response) -> None:
                 st.caption(f"错误：{trace_dict['error'].get('message')}")
 
 
+def _resolve_response_traces(session_id: str, response) -> list:
+    direct_traces = list(getattr(response, "tool_trace", None) or [])
+    if direct_traces:
+        return direct_traces
+
+    tasks = list_agent_session_tasks(session_id, limit=10)
+    if not tasks:
+        return []
+
+    response_task_id = getattr(response, "task_id", None)
+    if response_task_id:
+        for task in reversed(tasks):
+            if task.task_id == response_task_id and task.tool_trace:
+                return list(task.tool_trace)
+
+    for task in reversed(tasks):
+        if task.tool_trace:
+            return list(task.tool_trace)
+
+    return []
+
+
+def _render_response_analysis(response, session_id: str) -> None:
+    traces = _resolve_response_traces(session_id, response)
+    if not traces:
+        return
+
+    with st.expander("\u672c\u8f6e\u8c03\u7528\u6d41\u7a0b", expanded=False):
+        for trace in traces:
+            trace_dict = asdict(trace)
+            status = "\u6210\u529f" if trace_dict["success"] else "\u5931\u8d25"
+            st.write(f"{trace_dict['tool_name']}\uff1a{status}\uff0c{trace_dict['summary']}")
+            if trace_dict.get("error"):
+                st.caption(f"\u9519\u8bef\uff1a{trace_dict['error'].get('message')}")
+
+
 def _render_conversation(session_id: str, response=None) -> None:
     messages = list_agent_session_messages(session_id, limit=20)
     visible_messages = list(messages)
@@ -979,10 +1032,10 @@ def _render_conversation(session_id: str, response=None) -> None:
             return
 
         for message in visible_messages:
-            _render_message_bubble(message.role, message.content, message.created_at)
+            _render_message_bubble(message.role, message.content, message.created_at, message.metadata)
 
         if response is not None:
-            _render_response_analysis(response)
+            _render_response_analysis(response, session_id)
 
 
 def _render_task_history(session_id: str) -> None:
@@ -1005,12 +1058,14 @@ def _build_agent_request(
     *,
     input_type: str = "text",
     image=None,
+    message_metadata: dict | None = None,
 ) -> AgentRunRequest:
     return AgentRunRequest(
         user_input=user_input,
         session_id=session_id,
         input_type=input_type,
         image=image,
+        message_metadata=message_metadata,
         profile=None,
         options={"return_trace": True, "case_limit": 5, "use_memory": True, "history_limit": 6},
     )
@@ -1093,7 +1148,16 @@ def _render_image_upload_area(session_id: str) -> None:
             return
 
         final_user_input = image_prompt.strip() or "请分析这张截图是否存在诈骗风险。"
-        request = _build_agent_request(session_id, final_user_input, input_type="image", image=uploaded_image)
+        request = _build_agent_request(
+            session_id,
+            final_user_input,
+            input_type="image",
+            image=uploaded_image,
+            message_metadata={
+                "image_data_uri": _uploaded_image_to_data_uri(uploaded_image),
+                "image_name": getattr(uploaded_image, "name", None),
+            },
+        )
         _execute_agent_request(request, final_user_input)
 
 
@@ -1242,7 +1306,16 @@ def _render_input_area(session_id: str) -> None:
     normalized_prompt = (prompt or "").strip()
     if uploaded_image is not None:
         final_user_input = normalized_prompt or "请结合这张截图帮我判断是否存在诈骗风险。"
-        request = _build_agent_request(session_id, final_user_input, input_type="image", image=uploaded_image)
+        request = _build_agent_request(
+            session_id,
+            final_user_input,
+            input_type="image",
+            image=uploaded_image,
+            message_metadata={
+                "image_data_uri": _uploaded_image_to_data_uri(uploaded_image),
+                "image_name": getattr(uploaded_image, "name", None),
+            },
+        )
         _execute_agent_request(request, final_user_input)
         return
 

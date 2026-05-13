@@ -31,12 +31,15 @@ class AgentRunRequest:
     session_id: str | None = None
     input_type: str = "text"
     image: Any | None = None
+    message_metadata: dict[str, Any] | None = None
     profile: dict[str, Any] | None = None
     options: AgentRunOptions = field(default_factory=AgentRunOptions)
 
     def __post_init__(self) -> None:
         self.user_input = (self.user_input or "").strip()
         self.input_type = (self.input_type or "text").strip().lower()
+        if self.message_metadata is not None:
+            self.message_metadata = dict(self.message_metadata)
         if isinstance(self.options, dict):
             self.options = AgentRunOptions(**self.options)
 

@@ -92,7 +92,16 @@ def run_agent(request: AgentRunRequest | dict[str, Any]) -> AgentRunResponse:
     store = get_agent_session_store()
     session = store.get_or_create_session(agent_request.session_id)
     agent_request.session_id = session.session_id
-    store.append_message(session.session_id, "user", agent_request.user_input)
+    user_message_metadata = {
+        "input_type": agent_request.input_type,
+        **dict(agent_request.message_metadata or {}),
+    }
+    store.append_message(
+        session.session_id,
+        "user",
+        agent_request.user_input,
+        metadata=user_message_metadata,
+    )
     memory_context = build_memory_context(
         store,
         session.session_id,
