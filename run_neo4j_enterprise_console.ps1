@@ -4,6 +4,7 @@ $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 if ($projectRoot -match "[^\x00-\x7F]") {
     $existingSubst = subst | Select-String -Pattern ([regex]::Escape($projectRoot)) | Select-Object -First 1
+    $createdSubst = $false
     if ($existingSubst) {
         $shortRoot = ($existingSubst.ToString() -split "\\:")[0] + ":"
     } else {
@@ -14,11 +15,18 @@ if ($projectRoot -match "[^\x00-\x7F]") {
         }
         $shortRoot = "${driveLetter}:"
         subst $shortRoot $projectRoot
+        $createdSubst = $true
     }
 
-    $shortScript = Join-Path $shortRoot "run_neo4j_enterprise_console.ps1"
-    powershell -NoProfile -ExecutionPolicy Bypass -File $shortScript
-    exit $LASTEXITCODE
+    $shortScript = "$shortRoot\\run_neo4j_enterprise_console.ps1"
+    try {
+        powershell -NoProfile -ExecutionPolicy Bypass -File $shortScript
+        exit $LASTEXITCODE
+    } finally {
+        if ($createdSubst) {
+            subst $shortRoot /d | Out-Null
+        }
+    }
 }
 
 $javaHome = Join-Path $projectRoot ".neo4j-local\jdk-17.0.18+8"

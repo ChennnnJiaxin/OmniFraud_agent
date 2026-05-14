@@ -7,6 +7,8 @@ import numpy as np
 import plotly.express as px
 import pandas as pd
 import base64
+from openai import OpenAI
+
 
 from collections import Counter
 import json

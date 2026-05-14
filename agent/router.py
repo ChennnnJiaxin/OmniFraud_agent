@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from agent.models import (
     AgentRouteDecision,
     AgentRunRequest,
@@ -40,7 +42,7 @@ TEXT_RISK_KEYWORDS = (
     "银行卡",
     "冻结账户",
     "是不是诈骗",
-    "靠谱吗",
+    "靠谱不",
     "安全账户",
     "洗钱",
     "投资",
@@ -94,7 +96,7 @@ WRITING_ENTERTAINMENT_KEYWORDS = (
     "笑话",
     "电影",
     "写一首诗",
-    "诗",
+    "歌词",
 )
 PROGRAMMING_KEYWORDS = (
     "python",
@@ -131,6 +133,38 @@ def _looks_like_math_question(text: str) -> bool:
     has_operator = any(operator in normalized for operator in ("+", "-", "*", "/", "="))
     has_digits = any(char.isdigit() for char in normalized)
     return (has_operator and has_digits) or bool(_contains_any(normalized, MATH_KEYWORDS))
+
+
+def _looks_like_case_query(text: str) -> list[str]:
+    normalized = (text or "").strip()
+    if not normalized:
+        return []
+
+    matches: list[str] = []
+    explicit_markers = (
+        "诈骗案",
+        "案件",
+        "案情",
+        "判决书",
+        "非法集资案",
+        "集资诈骗案",
+    )
+    matches.extend([marker for marker in explicit_markers if marker in normalized])
+
+    if re.search(r"[\u4e00-\u9fffA-Za-z0-9]{2,30}(诈骗案|案件|案情|判决书)", normalized):
+        matches.append("named_case_pattern")
+
+    ask_markers = ("讲一下", "讲讲", "说说", "介绍一下", "分析一下", "聊聊", "科普一下")
+    if any(marker in normalized for marker in ask_markers) and any(marker in normalized for marker in explicit_markers):
+        matches.append("case_explainer_pattern")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for item in matches:
+        if item not in seen:
+            seen.add(item)
+            deduped.append(item)
+    return deduped
 
 
 def detect_out_of_scope(user_input: str) -> OutOfScopeResult:
@@ -219,6 +253,10 @@ def route_agent_task(request: AgentRunRequest) -> AgentRouteDecision:
     strong_case_hits = [keyword for keyword in case_hits if keyword in {"案例", "类似案例", "有哪些套路", "有什么特征", "总结", "共性"}]
     if strong_case_hits:
         return AgentRouteDecision(task_type=TASK_CASE_SUMMARY, reason="命中显式案例总结关键词", matched_rules=strong_case_hits)
+
+    natural_case_hits = _looks_like_case_query(text)
+    if natural_case_hits:
+        return AgentRouteDecision(task_type=TASK_CASE_SUMMARY, reason="命中自然语言案件查询模式", matched_rules=natural_case_hits)
 
     text_risk_hits = _contains_any(text.lower(), tuple(keyword.lower() for keyword in TEXT_RISK_KEYWORDS))
     if text_risk_hits and _looks_like_analysis_text(text):
