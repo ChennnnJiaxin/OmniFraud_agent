@@ -29,7 +29,7 @@ rel_color_map = {
     "涉案资产": "#9ACD32",
     "罪名": "#808080",
     "刑事判决": "#DC143C",
-    "赔偿金": "#00FA9A",
+    "赔偿量": "#00FA9A",
     "赔偿给": "#00BFFF",
 }
 
@@ -40,7 +40,7 @@ def init_net():
         height="800px",
         width="100%",
         notebook=False,
-        cdn_resources="remote",
+        cdn_resources="in_line",
     )
     net.set_options(
         """
@@ -92,11 +92,12 @@ def visualize_case_network(case_name, net=None):
             color=node_color_map.get(node.type, "#888888"),
             font={"size": 12},
         )
+        existing_nodes.add(node.id)
 
     existing_edges = {(edge["from"], edge["to"], edge.get("label")) for edge in net.edges}
     for rel in graph_data.relations:
         edge_key = (rel.source, rel.target, rel.type)
-        if edge_key in existing_edges:
+        if edge_key in existing_edges or rel.source not in existing_nodes or rel.target not in existing_nodes:
             continue
         net.add_edge(
             rel.source,
@@ -106,17 +107,15 @@ def visualize_case_network(case_name, net=None):
             width=1.5,
             arrows="to",
         )
+        existing_edges.add(edge_key)
     return net
 
 
 def show_net(net, height=500):
-    net.save_graph("temp.html")
-    with open("temp.html", "r", encoding="utf-8") as file:
-        html = file.read()
+    html = net.generate_html(notebook=False)
     st.components.v1.html(html, height=height)
 
 
-@st.cache_data(ttl=120, show_spinner=False)
 @st.dialog("案件详情", width="large")
 def show_case_detail(case_name):
     case = get_case_detail(case_name)

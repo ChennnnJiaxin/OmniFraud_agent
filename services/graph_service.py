@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import re
-from functools import lru_cache
 
 from clients.neo4j_client import Neo4jClient
-from infra.config import AppConfig, load_app_config
+from infra.config import AppConfig
 from schemas.common_schema import ServiceError
 from schemas.graph_schema import GraphEdge, GraphNode, GraphQueryResponse
 
@@ -33,8 +32,8 @@ REL_COLOR_MAP = {
     "涉案资产": "#9ACD32",
     "罪名": "#808080",
     "刑事判决": "#DC143C",
-    "赔偿给": "#00FA9A",
-    "赔偿量": "#00BFFF",
+    "赔偿量": "#00FA9A",
+    "赔偿给": "#00BFFF",
 }
 
 CASE_EXAMPLE_QUERY = """
@@ -74,60 +73,60 @@ RETURN
 LIMIT $limit
 """
 
-_CYPHER_PROMPT_TEMPLATE = """
-You are an expert Neo4j developer.
-Translate the user question into Cypher based only on the provided schema.
-The graph uses Chinese labels and relationship names. Never translate, invent, or alias schema labels or relationships.
 
-Important exact labels:
-案件, 人物, 机构, 地点, 工具, 诈骗类型, 实体资产, 罪名, 法律法规
-
-Important exact relationships:
-涉及被害人, 涉及嫌疑人, 属于组织, 所在地, 案发地点, 触犯法律法规, 诈骗类型, 涉案工具, 人物关系, 涉案资产, 罪名, 刑事判决, 赔偿给, 赔偿量
-
-Use 案件, not 案例. Use 涉案工具/诈骗类型, not 涉及.
-Do not return entire nodes. Limit example lists to at most 8 records.
-
-Schema:
-{schema}
-
-Question:
-{question}
-"""
-
-
-def _config_key(config: AppConfig | None) -> tuple[str | None, ...]:
-    current = config or load_app_config()
-    return (
-        current.openai_api_key,
-        current.openai_model,
-        current.openai_base_url,
-        current.neo4j_uri,
-        current.neo4j_username,
-        current.neo4j_password,
-        current.neo4j_database,
-    )
-
-
-def _extract_case_keyword(question: str) -> str | None:
-    normalized = (question or "").strip()
+def _extract_case_keywords(question: str) -> list[str]:
+    normalized = re.sub(r"\s+", "", (question or "").strip())
     if not normalized:
-        return None
-    if not any(word in normalized for word in ("案例", "案件", "案子")):
-        return None
+        return []
 
-    for keyword in ("手机", "刷单", "投资", "贷款", "客服", "公检法", "冒充", "虚假", "电信", "网络", "交友", "购物"):
+    if "杀猪盘" in normalized:
+        return ["杀猪盘", "婚恋", "交友", "投资"]
+
+    keywords = []
+    for keyword in (
+        "刷单",
+        "投资",
+        "贷款",
+        "客服",
+        "公检法",
+        "冒充",
+        "虚假",
+        "电信",
+        "网络",
+        "交友",
+        "购物",
+        "银行卡",
+        "合同诈骗",
+        "集资诈骗",
+        "诈骗",
+    ):
         if keyword in normalized:
-            return keyword
-    match = re.search(r"([\u4e00-\u9fff]{2,8})(?:诈骗|案例|案件|案子)", normalized)
-    return match.group(1) if match else "诈骗"
+            keywords.append(keyword)
+
+    match = re.search(r"([\u4e00-\u9fff]{2,12})(?:诈骗案|案例|案件|案子|特征|套路)", normalized)
+    if match:
+        keywords.append(match.group(1))
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for keyword in keywords:
+        if keyword and keyword not in seen:
+            seen.add(keyword)
+            deduped.append(keyword)
+    return deduped
 
 
-def _format_case_examples(rows: list[dict], keyword: str) -> str:
+def _format_case_examples(rows: list[dict], keyword: str, original_question: str) -> str:
     if not rows:
+        if "杀猪盘" in original_question:
+            return (
+                "知识图谱中未直接命中“杀猪盘”字样，但可参考婚恋交友、虚假投资相关节点。"
+                "这类诈骗通常先通过社交或婚恋关系建立信任，再引导受害人进入虚假投资、博彩或理财平台，"
+                "常见特征包括长期情感铺垫、小额盈利诱导、催促加大投入、提现受阻后索要保证金或解冻费。"
+            )
         return f"知识图谱中暂未检索到与“{keyword}”直接匹配的案件。"
 
-    lines = [f"知识图谱中检索到以下与“{keyword}”相关的案件："]
+    lines = [f"知识图谱中检索到以下与“{keyword}”相关的案件线索："]
     for index, row in enumerate(rows, start=1):
         name = row.get("name") or "未命名案件"
         description = row.get("description") or "暂无案情摘要"
@@ -140,52 +139,27 @@ def _format_case_examples(rows: list[dict], keyword: str) -> str:
         lines.append(
             f"{index}. {name}：{description} 类型：{case_type}；诈骗类型：{fraud_types}；涉案工具：{tools}；地点：{provinces}。"
         )
+
+    if "杀猪盘" in original_question:
+        lines.append(
+            "结合这些婚恋交友和投资类线索，杀猪盘的核心特征是先建立亲密信任，再把关系转化为投资、博彩或转账诱导。"
+        )
     return "\n".join(lines)
 
 
-def _query_case_examples(question: str, config: AppConfig | None = None) -> str | None:
-    keyword = _extract_case_keyword(question)
-    if keyword is None:
-        return None
-    rows = Neo4jClient(config).query(CASE_EXAMPLE_QUERY, keyword=keyword, limit=8)
-    return _format_case_examples(rows, keyword)
+def _query_case_examples(question: str, config: AppConfig | None = None) -> str:
+    keywords = _extract_case_keywords(question)
+    if not keywords:
+        return "知识图谱暂未识别出明确的案件检索关键词，已跳过图谱扩展查询。"
 
-
-@lru_cache(maxsize=8)
-def _build_cypher_chain(config_key: tuple[str | None, ...]):
-    from langchain.prompts.prompt import PromptTemplate
-    from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
-    from langchain_openai import ChatOpenAI
-
-    config = AppConfig(
-        openai_api_key=config_key[0],
-        openai_model=config_key[1],
-        openai_base_url=config_key[2],
-        neo4j_uri=config_key[3],
-        neo4j_username=config_key[4],
-        neo4j_password=config_key[5],
-        neo4j_database=config_key[6],
-    )
-    llm = ChatOpenAI(
-        openai_api_key=config.openai_api_key,
-        model=config.openai_model,
-        base_url=config.openai_base_url,
-    )
-    graph = Neo4jGraph(
-        url=config.neo4j_uri,
-        username=config.neo4j_username,
-        password=config.neo4j_password,
-        database=config.neo4j_database,
-        refresh_schema=True,
-    )
-    cypher_prompt = PromptTemplate.from_template(_CYPHER_PROMPT_TEMPLATE)
-    return GraphCypherQAChain.from_llm(
-        llm,
-        graph=graph,
-        verbose=True,
-        cypher_prompt=cypher_prompt,
-        allow_dangerous_requests=True,
-    )
+    client = Neo4jClient(config)
+    last_keyword = keywords[0]
+    for keyword in keywords:
+        rows = client.query(CASE_EXAMPLE_QUERY, keyword=keyword, limit=8)
+        if rows:
+            return _format_case_examples(rows, keyword, question)
+        last_keyword = keyword
+    return _format_case_examples([], last_keyword, question)
 
 
 def query_fraud_graph(query: str, entity: str | None = None, config: AppConfig | None = None) -> GraphQueryResponse:
@@ -197,13 +171,8 @@ def query_fraud_graph(query: str, entity: str | None = None, config: AppConfig |
         )
 
     try:
-        deterministic_answer = _query_case_examples(normalized_query, config=config)
-        if deterministic_answer is not None:
-            return GraphQueryResponse(success=True, explanation=deterministic_answer)
-
-        final_query = f"{normalized_query}（重点关注：{entity}）" if entity else normalized_query
-        result = _build_cypher_chain(_config_key(config)).invoke({"query": final_query})
-        explanation = result.get("result") if isinstance(result, dict) else str(result)
+        final_query = f"{normalized_query}，重点关注：{entity}" if entity else normalized_query
+        explanation = _query_case_examples(final_query, config=config)
         return GraphQueryResponse(success=True, explanation=explanation)
     except Exception as exc:
         return GraphQueryResponse(
@@ -242,13 +211,14 @@ def get_case_graph_data(case_name: str, config: AppConfig | None = None) -> Grap
         n IN nodes(path)
         WHERE NOT n:案件 OR n = case
     )
-    WITH case,
-         [n IN nodes(path) WHERE NOT n:案件] AS path_nodes,
-         rels AS path_rels
-    UNWIND (path_nodes + [case]) AS node
-    UNWIND path_rels AS rel
-    RETURN collect(DISTINCT node)[..100] AS nodes,
-           collect(DISTINCT rel)[..150] AS rels
+    WITH case, collect(path) AS paths
+    WITH
+        reduce(all_nodes = [case], p IN paths | CASE WHEN p IS NULL THEN all_nodes ELSE all_nodes + nodes(p) END) AS raw_nodes,
+        reduce(all_rels = [], p IN paths | CASE WHEN p IS NULL THEN all_rels ELSE all_rels + relationships(p) END) AS raw_rels
+    UNWIND raw_nodes AS node
+    WITH collect(DISTINCT node)[..100] AS nodes, raw_rels
+    RETURN nodes,
+           [rel IN raw_rels WHERE rel IS NOT NULL][..150] AS rels
     """
 
     try:
@@ -310,7 +280,7 @@ def create_case_network(case_name: str, config: AppConfig | None = None):
     if not graph_data.success:
         return None
 
-    net = Network(directed=True, height="800px", width="100%", notebook=False, cdn_resources="remote")
+    net = Network(directed=True, height="800px", width="100%", notebook=False, cdn_resources="in_line")
     net.set_options(
         """
         {
@@ -332,6 +302,7 @@ def create_case_network(case_name: str, config: AppConfig | None = None):
         }
         """
     )
+    node_ids = set()
     for node in graph_data.entities:
         title = "\n".join(f"{key}: {value}" for key, value in node.properties.items())
         net.add_node(
@@ -341,7 +312,10 @@ def create_case_network(case_name: str, config: AppConfig | None = None):
             color=NODE_COLOR_MAP.get(node.type, "#888888"),
             font={"size": 12},
         )
+        node_ids.add(node.id)
     for rel in graph_data.relations:
+        if rel.source not in node_ids or rel.target not in node_ids:
+            continue
         net.add_edge(
             rel.source,
             rel.target,

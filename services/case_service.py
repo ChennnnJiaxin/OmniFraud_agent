@@ -9,7 +9,7 @@ from schemas.common_schema import ServiceError
 
 
 COUNT_QUERY = """
-MATCH (case:妗堜欢)
+MATCH (case:案件)
 WHERE case.content CONTAINS $keyword
     OR case.description CONTAINS $keyword
     OR case.name CONTAINS $keyword
@@ -17,16 +17,16 @@ RETURN count(DISTINCT case.name) AS count
 """
 
 SEARCH_QUERY = """
-MATCH (case:妗堜欢)
+MATCH (case:案件)
 WHERE case.content CONTAINS $keyword
     OR case.description CONTAINS $keyword
     OR case.name CONTAINS $keyword
-OPTIONAL MATCH (case:妗堜欢)-[:娑夊強瀚岀枒浜篯->(suspect)
-OPTIONAL MATCH (case:妗堜欢)-[:娑夊強琚浜篯->(victim)
-OPTIONAL MATCH (case:妗堜欢)-[:璇堥獥绫诲瀷]->(fraud_type)
-OPTIONAL MATCH (case:妗堜欢)-[:娑夋璧勪骇]->(asset {type:"閽辫储"})
-OPTIONAL MATCH (case:妗堜欢)-[]->(location:鍦扮偣)
-OPTIONAL MATCH (case:妗堜欢)-[]->(law:娉曞緥娉曡)
+OPTIONAL MATCH (case:案件)-[:涉及嫌疑人]->(suspect)
+OPTIONAL MATCH (case:案件)-[:涉及被害人]->(victim)
+OPTIONAL MATCH (case:案件)-[:诈骗类型]->(fraud_type)
+OPTIONAL MATCH (case:案件)-[:涉案资产]->(asset {type: "钱财"})
+OPTIONAL MATCH (case:案件)-[]->(location:地点)
+OPTIONAL MATCH (case:案件)-[]->(law:法律法规)
 RETURN
     case.name AS name,
     case.description AS description,
@@ -42,24 +42,25 @@ SKIP $skip LIMIT $limit
 """
 
 RECOMMEND_QUERY = """
-MATCH (c:妗堜欢)
+MATCH (c:案件)
 RETURN c.name AS name
 ORDER BY rand()
 LIMIT $limit
 """
 
 CASE_INTENT_PREFIXES = (
-    "和我讲一下",
-    "给我讲一下",
-    "帮我讲一下",
-    "讲一下",
+    "和我讲一个",
+    "给我讲一个",
+    "帮我讲一个",
+    "讲一个",
     "讲讲",
     "说说",
-    "介绍一下",
-    "分析一下",
-    "总结一下",
+    "介绍一个",
+    "分析一个",
+    "总结一个",
     "聊聊",
 )
+
 CASE_INTENT_SUFFIXES = (
     "这个问题",
     "这个案件",
@@ -101,6 +102,8 @@ def _keyword_candidates(query: str) -> list[str]:
     extracted = extract_case_search_keyword(normalized)
     candidates = [candidate for candidate in (extracted, normalized) if candidate]
 
+    if "杀猪盘" in normalized:
+        candidates.extend(["婚恋", "交友", "投资", "虚假投资"])
     if extracted.endswith("诈骗案"):
         candidates.append(extracted[:-1])
     if extracted.endswith("案件"):
