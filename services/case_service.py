@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from clients.neo4j_client import Neo4jClient
 from infra.config import AppConfig
@@ -8,43 +9,78 @@ from schemas.case_schema import CaseItem, CaseSearchResponse
 from schemas.common_schema import ServiceError
 
 
+CASE_LABELS = ["案件", "妗堜欢"]
+PERSON_LABELS = ["人物", "浜虹墿"]
+ORG_LABELS = ["机构", "鏈烘瀯"]
+LOCATION_LABELS = ["地点", "鍦扮偣"]
+LAW_LABELS = ["法律法规", "娉曞緥娉曡"]
+
+SUSPECT_RELS = ["涉及嫌疑人", "涉案嫌疑人", "娑夊強瀚岀枒浜"]
+VICTIM_RELS = ["涉及被害人", "涉案被害人", "娑夊強琚浜"]
+FRAUD_TYPE_RELS = ["诈骗类型", "璇堥獥绫诲瀷"]
+ASSET_RELS = ["涉案资产", "娑夋璧勪骇"]
+
+
 COUNT_QUERY = """
-MATCH (case:案件)
-WHERE case.content CONTAINS $keyword
-    OR case.description CONTAINS $keyword
-    OR case.name CONTAINS $keyword
-RETURN count(DISTINCT case.name) AS count
+MATCH (case)
+WHERE any(label IN labels(case) WHERE label IN $case_labels)
+  AND (
+    coalesce(case.content, "") CONTAINS $keyword
+    OR coalesce(case.description, "") CONTAINS $keyword
+    OR coalesce(case.name, "") CONTAINS $keyword
+    OR coalesce(case.title, "") CONTAINS $keyword
+  )
+RETURN count(DISTINCT coalesce(case.name, case.title, elementId(case))) AS count
 """
 
 SEARCH_QUERY = """
-MATCH (case:案件)
-WHERE case.content CONTAINS $keyword
-    OR case.description CONTAINS $keyword
-    OR case.name CONTAINS $keyword
-OPTIONAL MATCH (case:案件)-[:涉及嫌疑人]->(suspect)
-OPTIONAL MATCH (case:案件)-[:涉及被害人]->(victim)
-OPTIONAL MATCH (case:案件)-[:诈骗类型]->(fraud_type)
-OPTIONAL MATCH (case:案件)-[:涉案资产]->(asset {type: "钱财"})
-OPTIONAL MATCH (case:案件)-[]->(location:地点)
-OPTIONAL MATCH (case:案件)-[]->(law:法律法规)
+MATCH (case)
+WHERE any(label IN labels(case) WHERE label IN $case_labels)
+  AND (
+    coalesce(case.content, "") CONTAINS $keyword
+    OR coalesce(case.description, "") CONTAINS $keyword
+    OR coalesce(case.name, "") CONTAINS $keyword
+    OR coalesce(case.title, "") CONTAINS $keyword
+  )
+OPTIONAL MATCH (case)-[suspect_rel]->(suspect)
+WHERE type(suspect_rel) IN $suspect_rels
+OPTIONAL MATCH (case)-[victim_rel]->(victim)
+WHERE type(victim_rel) IN $victim_rels
+OPTIONAL MATCH (case)-[fraud_type_rel]->(fraud_type)
+WHERE type(fraud_type_rel) IN $fraud_type_rels
+OPTIONAL MATCH (case)-[asset_rel]->(asset)
+WHERE type(asset_rel) IN $asset_rels
+OPTIONAL MATCH (case)-[]->(location)
+WHERE any(label IN labels(location) WHERE label IN $location_labels)
+OPTIONAL MATCH (case)-[]->(law)
+WHERE any(label IN labels(law) WHERE label IN $law_labels)
 RETURN
-    case.name AS name,
-    case.description AS description,
+    coalesce(case.name, case.title, "未命名案件") AS name,
+    coalesce(case.description, case.summary, case.content, "") AS description,
     case.type AS type,
     COLLECT(DISTINCT fraud_type.name) AS types,
     COLLECT(DISTINCT fraud_type.subtype) AS subtypes,
     COLLECT(DISTINCT suspect.name) AS suspects,
     COLLECT(DISTINCT victim.name) AS victims,
-    SUM(asset.amount) AS money,
-    COLLECT(DISTINCT location.province) AS locations,
+    SUM(CASE WHEN coalesce(asset.type, "") IN ["钱财", "閽辫储"] THEN asset.amount ELSE null END) AS money,
+    COLLECT(DISTINCT coalesce(location.province, location.name)) AS locations,
     COLLECT(DISTINCT law.name) AS laws
 SKIP $skip LIMIT $limit
 """
 
 RECOMMEND_QUERY = """
-MATCH (c:案件)
-RETURN c.name AS name
+MATCH (c)
+WHERE any(label IN labels(c) WHERE label IN $case_labels)
+RETURN coalesce(c.name, c.title) AS name
 ORDER BY rand()
+LIMIT $limit
+"""
+
+SCHEMA_SUMMARY_QUERY = """
+MATCH (n)
+UNWIND labels(n) AS label
+RETURN label, count(*) AS count
+ORDER BY count DESC
 LIMIT $limit
 """
 
@@ -69,6 +105,22 @@ CASE_INTENT_SUFFIXES = (
     "的问题",
     "的情况",
 )
+
+
+def _query_params(**extra: Any) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        "case_labels": CASE_LABELS,
+        "person_labels": PERSON_LABELS,
+        "org_labels": ORG_LABELS,
+        "location_labels": LOCATION_LABELS,
+        "law_labels": LAW_LABELS,
+        "suspect_rels": SUSPECT_RELS,
+        "victim_rels": VICTIM_RELS,
+        "fraud_type_rels": FRAUD_TYPE_RELS,
+        "asset_rels": ASSET_RELS,
+    }
+    params.update(extra)
+    return params
 
 
 def extract_case_search_keyword(query: str) -> str:
@@ -137,9 +189,9 @@ def search_cases(
         last_total_count = 0
         rows: list[dict] = []
         for keyword in _keyword_candidates(normalized_query):
-            count_rows = client.query(COUNT_QUERY, keyword=keyword)
+            count_rows = client.query(COUNT_QUERY, **_query_params(keyword=keyword))
             total_count = int(count_rows[0]["count"]) if count_rows else 0
-            candidate_rows = client.query(SEARCH_QUERY, keyword=keyword, skip=skip, limit=limit)
+            candidate_rows = client.query(SEARCH_QUERY, **_query_params(keyword=keyword, skip=skip, limit=limit))
             last_total_count = total_count
             if candidate_rows:
                 rows = candidate_rows
@@ -174,8 +226,9 @@ def search_cases(
 
 
 def get_case_names(limit: int = 5, config: AppConfig | None = None) -> list[str]:
-    try:
-        rows = Neo4jClient(config).query(RECOMMEND_QUERY, limit=limit)
-        return [row["name"] for row in rows if row.get("name")]
-    except Exception:
-        return []
+    rows = Neo4jClient(config).query(RECOMMEND_QUERY, **_query_params(limit=limit))
+    return [row["name"] for row in rows if row.get("name")]
+
+
+def get_schema_summary(limit: int = 20, config: AppConfig | None = None) -> list[dict[str, Any]]:
+    return Neo4jClient(config).query(SCHEMA_SUMMARY_QUERY, limit=limit)

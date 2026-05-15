@@ -3,6 +3,7 @@ import streamlit as st
 from clients.neo4j_client import Neo4jClient
 from search import kg
 from services.case_service import get_case_names as get_case_names_service
+from services.case_service import get_schema_summary
 from services.case_service import search_cases as search_cases_service
 
 
@@ -45,6 +46,21 @@ def search_cases(keyword: str, skip: int = 0, limit: int = 30):
 
 def get_cases_names(limit: int = 5):
     return get_case_names_service(limit=limit)
+
+
+def render_schema_diagnostic():
+    try:
+        schema_rows = get_schema_summary(limit=12)
+    except Exception as exc:
+        st.error(f"Neo4j schema 诊断失败：{exc}")
+        return
+
+    if not schema_rows:
+        st.warning("Neo4j 已连接，但数据库中暂未发现任何节点。")
+        return
+
+    st.caption("当前 Neo4j 节点标签统计：")
+    st.dataframe(schema_rows, use_container_width=True, hide_index=True)
 
 
 def render_case_card(case, index: int):
@@ -117,45 +133,52 @@ if search_clicked or keyword.strip():
                 total_count, cases = search_cases(keyword)
                 if total_count <= 0 or not cases:
                     st.info("没有找到匹配的案件。")
+                    render_schema_diagnostic()
                 else:
                     st.success(f"共找到 {total_count} 条匹配案件，当前展示 {len(cases)} 条。")
                     for index, case in enumerate(cases):
                         render_case_card(case, index)
             except Exception as exc:
                 st.error(f"搜索时发生错误：{exc}")
+                render_schema_diagnostic()
 else:
-    with st.expander("智能推荐案件", expanded=True):
-        with st.spinner("载入推荐案件..."):
-            cases_names = get_cases_names(limit=4)
-            if not cases_names:
-                st.info("暂无可推荐案件，请检查 Neo4j 中是否已有案件数据。")
-            else:
-                cols = st.columns(2)
-                for index, case_name in enumerate(cases_names):
-                    with cols[index % 2]:
-                        st.button(
-                            case_name,
-                            use_container_width=True,
-                            key=f"case_{index}",
-                            help="点击查看案件详情",
-                            on_click=kg.show_case_detail,
-                            args=(case_name,),
-                        )
-
-    with st.expander("知识图谱可视化案件", expanded=True):
-        with st.spinner("载入知识图谱..."):
-            if not cases_names:
-                st.info("暂无案件可用于绘制知识图谱。")
-            else:
-                net = kg.init_net()
-                for case_name in cases_names:
-                    try:
-                        net = kg.visualize_case_network(case_name, net)
-                    except Exception as exc:
-                        st.toast(f"加载案件 {case_name} 时发生错误：{exc}")
-
-                if net.nodes:
-                    kg.show_net(net, height=800)
-                    st.toast("知识图谱加载完成！")
+    try:
+        with st.expander("智能推荐案件", expanded=True):
+            with st.spinner("载入推荐案件..."):
+                cases_names = get_cases_names(limit=4)
+                if not cases_names:
+                    st.info("暂无可推荐案件，请检查 Neo4j 中是否已有案件数据。")
+                    render_schema_diagnostic()
                 else:
-                    st.info("已找到案件，但暂未查询到可展示的图谱节点。")
+                    cols = st.columns(2)
+                    for index, case_name in enumerate(cases_names):
+                        with cols[index % 2]:
+                            st.button(
+                                case_name,
+                                use_container_width=True,
+                                key=f"case_{index}",
+                                help="点击查看案件详情",
+                                on_click=kg.show_case_detail,
+                                args=(case_name,),
+                            )
+
+        with st.expander("知识图谱可视化案件", expanded=True):
+            with st.spinner("载入知识图谱..."):
+                if not cases_names:
+                    st.info("暂无案件可用于绘制知识图谱。")
+                else:
+                    net = kg.init_net()
+                    for case_name in cases_names:
+                        try:
+                            net = kg.visualize_case_network(case_name, net)
+                        except Exception as exc:
+                            st.toast(f"加载案件 {case_name} 时发生错误：{exc}")
+
+                    if net.nodes:
+                        kg.show_net(net, height=800)
+                        st.toast("知识图谱加载完成。")
+                    else:
+                        st.info("已找到案件，但暂未查询到可展示的图谱节点。")
+    except Exception as exc:
+        st.error(f"推荐案件加载失败：{exc}")
+        render_schema_diagnostic()

@@ -1,4 +1,5 @@
 # %%
+import os
 from pathlib import Path
 
 import torch
@@ -23,12 +24,17 @@ MODEL_NAME = "bert-base-chinese"
 MODEL_WEIGHTS_PATH = Path("model/final_model.pth")
 
 
+def _local_files_only() -> bool:
+    return os.getenv("TRANSFORMERS_OFFLINE", "").strip().lower() in {"1", "true", "yes"}
+
+
 def _load_base_tokenizer():
     try:
-        return BertTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
+        return BertTokenizer.from_pretrained(MODEL_NAME, local_files_only=_local_files_only())
     except Exception as exc:
         raise RuntimeError(
-            f"本地未找到 {MODEL_NAME} 的 tokenizer 缓存，请先联网下载一次模型缓存后再离线运行。原始错误：{exc}"
+            f"无法加载 {MODEL_NAME} 的 tokenizer。云端部署会尝试联网下载；"
+            f"如需离线运行，请先下载缓存并设置 TRANSFORMERS_OFFLINE=1。原始错误：{exc}"
         ) from exc
 
 
@@ -37,11 +43,12 @@ def _load_base_model(num_labels: int):
         return BertForSequenceClassification.from_pretrained(
             MODEL_NAME,
             num_labels=num_labels,
-            local_files_only=True,
+            local_files_only=_local_files_only(),
         ).to(device)
     except Exception as exc:
         raise RuntimeError(
-            f"本地未找到 {MODEL_NAME} 的模型缓存，请先联网下载一次模型缓存后再离线运行。原始错误：{exc}"
+            f"无法加载 {MODEL_NAME} 的基础模型。云端部署会尝试联网下载；"
+            f"如需离线运行，请先下载缓存并设置 TRANSFORMERS_OFFLINE=1。原始错误：{exc}"
         ) from exc
 
 
@@ -90,11 +97,10 @@ class MsgClsModel:
         output = output.cpu().detach().numpy()
         output = output[0]
         output = list(zip(self.lb.classes_, output))
-        output = sorted(output, key=lambda x: x[1], reverse=True)
-        return output
+        return sorted(output, key=lambda x: x[1], reverse=True)
 
 
 if __name__ == "__main__":
     model = MsgClsModel()
-    test_text = "【顺丰】尊敬的客户，您使用顺丰的频率较高，现赠送您暖风扇一台，请添加支付宝好友进行登记领取。"
+    test_text = "【顺丰】尊敬的客户，您使用顺丰的频率较高，现赠送您暖风扇一只，请添加支付宝好友进行登记领取。"
     print(model.predict(test_text))

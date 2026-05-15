@@ -6,19 +6,30 @@ from services.graph_service import get_case_detail, get_case_graph_data
 
 node_color_map = {
     "案件": "#FF6347",
+    "妗堜欢": "#FF6347",
     "人物": "#1E90FF",
+    "浜虹墿": "#1E90FF",
     "机构": "#20B2AA",
+    "鏈烘瀯": "#20B2AA",
     "地点": "#3CB371",
+    "鍦扮偣": "#3CB371",
     "工具": "#FFA500",
+    "宸ュ叿": "#FFA500",
     "诈骗类型": "#BA55D3",
+    "璇堥獥绫诲瀷": "#BA55D3",
     "实体资产": "#FFD700",
+    "瀹炰綋璧勪骇": "#FFD700",
     "罪名": "#A9A9A9",
+    "缃悕": "#A9A9A9",
     "法律法规": "#CD853F",
+    "娉曞緥娉曡": "#CD853F",
 }
 
 rel_color_map = {
     "涉及被害人": "#FF69B4",
+    "涉案被害人": "#FF69B4",
     "涉及嫌疑人": "#00CED1",
+    "涉案嫌疑人": "#00CED1",
     "属于组织": "#7B68EE",
     "所在地": "#32CD32",
     "案发地点": "#FF4500",
@@ -29,7 +40,7 @@ rel_color_map = {
     "涉案资产": "#9ACD32",
     "罪名": "#808080",
     "刑事判决": "#DC143C",
-    "赔偿量": "#00FA9A",
+    "赔偿金额": "#00FA9A",
     "赔偿给": "#00BFFF",
 }
 
@@ -74,7 +85,7 @@ def init_net():
 def visualize_case_network(case_name, net=None):
     graph_data = get_case_graph_data(case_name)
     if not graph_data.success:
-        st.warning(graph_data.error.message if graph_data.error else "未找到相关案件信息")
+        st.warning(graph_data.error.message if graph_data.error else "未找到相关案件信息。")
         return net
 
     if not net:
@@ -120,7 +131,7 @@ def show_net(net, height=500):
 def show_case_detail(case_name):
     case = get_case_detail(case_name)
     if not case:
-        st.warning("未找到相关案件信息")
+        st.warning("未找到相关案件信息。")
         return
 
     with st.spinner("加载案件详情中..."):
